@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+
+{% block title %}PlagiScan AI – Upload & Analyze Academic Documents{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <!-- Hero Header -->
+    <div class="text-center mb-5">
+      <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold mb-3">
+        <i class="bi bi-cpu me-1"></i> Dual-Engine Academic Analyzer
+      </span>
+      <h1 class="display-5 fw-extrabold text-dark tracking-tight mb-3">
+        Verify Originality, Evaluate AI Likelihood & Refine Academic Quality
+      </h1>
+      <p class="lead text-muted mx-auto" style="max-width: 720px;">
+        Fast, interpretable academic analysis powered by TF-IDF corpus similarity, stylometric perplexity/burstiness classification, citation auditing, and section-by-section breakdown.
+      </p>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card card-modern shadow-sm mb-5" id="upload-section">
+      <div class="card-body p-4 p-md-5">
+
+        <!-- Navigation Tabs: File Upload vs Direct Text Paste -->
+        <ul class="nav nav-pills mb-4 nav-justified" id="uploadTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold" id="file-tab" data-bs-toggle="pill" data-bs-target="#file-pane" type="button" role="tab">
+              <i class="bi bi-file-earmark-arrow-up me-2"></i> Document File Upload (.PDF, .DOCX, .TXT)
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="text-tab" data-bs-toggle="pill" data-bs-target="#text-pane" type="button" role="tab">
+              <i class="bi bi-textarea-t me-2"></i> Paste Academic Text
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="uploadTabContent">
+          <!-- File Upload Pane -->
+          <div class="tab-pane fade show active" id="file-pane" role="tabpanel">
+            <div class="dropzone-area" id="dropzone">
+              <i class="bi bi-cloud-arrow-up dropzone-icon"></i>
+              <h5 class="fw-bold mb-2">Drag and drop your academic document here</h5>
+              <p class="text-muted small mb-3">Supports PDF (.pdf), Microsoft Word (.docx), and Plain Text (.txt) up to 16 MB</p>
+              <button type="button" class="btn btn-outline-primary px-4 rounded-pill" onclick="document.getElementById('fileInput').click()">
+                <i class="bi bi-folder2-open me-1"></i> Browse Files
+              </button>
+              <input type="file" id="fileInput" class="d-none" accept=".pdf,.docx,.doc,.txt">
+            </div>
+
+            <div id="fileInfoCard" class="card bg-light border-0 p-3 mt-3 d-none">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                  <i class="bi bi-file-earmark-text text-primary fs-3"></i>
+                  <div>
+                    <h6 class="mb-0 fw-bold" id="selectedFileName">document.pdf</h6>
+                    <small class="text-muted" id="selectedFileSize">0 KB</small>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btnRemoveFile">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Direct Text Pane -->
+          <div class="tab-pane fade" id="text-pane" role="tabpanel">
+            <div class="mb-3">
+              <label for="directTitleInput" class="form-label fw-semibold">Document / Paper Title</label>
+              <input type="text" class="form-control" id="directTitleInput" placeholder="e.g., Comparative Study on Deep Reinforcement Learning">
+            </div>
+            <div class="mb-3">
+              <label for="directTextInput" class="form-label fw-semibold">Academic Content</label>
+              <textarea class="form-control" id="directTextInput" rows="10" placeholder="Paste your research paper, assignment text, or dissertation chapters here... (Minimum 30 words)"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Options & Settings -->
+        <hr class="my-4 text-muted">
+        <div class="row g-3 align-items-center mb-4">
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="optSaveReference">
+              <label class="form-check-label fw-semibold" for="optSaveReference">
+                Save as Reference Document in Local Corpus
+              </label>
+              <div class="text-muted small">If enabled, this document will be indexed as a benchmark reference for future student checks.</div>
+            </div>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <span class="badge bg-light text-dark border p-2 me-2">
+              <i class="bi bi-database me-1 text-primary"></i> Reference Corpus: <strong>{{ reference_count }}</strong> Papers
+            </span>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-primary btn-lg fw-bold shadow py-3" id="btnStartScan">
+            <i class="bi bi-shield-check me-2"></i> Start PlagiScan AI Analysis
+          </button>
+        </div>
+
+        <!-- Processing Progress Overlay -->
+        <div id="progressContainer" class="mt-4 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-semibold text-primary" id="progressStatusText">Extracting and parsing document...</span>
+            <span class="fw-bold text-muted" id="progressPercentText">25%</span>
+          </div>
+          <div class="progress" style="height: 10px;">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 25%"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 15 Features Grid Overview -->
+    <div class="mb-5">
+      <h3 class="fw-bold text-dark text-center mb-4">Comprehensive Academic Analysis Features</h3>
+      <div class="row g-3">
+        
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-primary-subtle text-primary rounded-3 p-2">
+                <i class="bi bi-file-earmark-pdf fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Multi-Format Parsing</h6>
+            </div>
+            <p class="text-muted small mb-0">Full structural extraction for PDF (PyMuPDF), DOCX (python-docx), and plain text documents.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-danger-subtle text-danger rounded-3 p-2">
+                <i class="bi bi-copy fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">TF-IDF Plagiarism</h6>
+            </div>
+            <p class="text-muted small mb-0">Sublinear TF-IDF and Cosine Similarity cross-referencing against the local academic reference database.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-warning-subtle text-warning-emphasis rounded-3 p-2">
+                <i class="bi bi-cpu fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">AI Likelihood Estimation</h6>
+            </div>
+            <p class="text-muted small mb-0">Calculates sentence perplexity and burstiness variance with yellow highlighting for high-probability AI sentences.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-info-subtle text-info-emphasis rounded-3 p-2">
+                <i class="bi bi-layout-split fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Side-by-Side Diff Viewer</h6>
+            </div>
+            <p class="text-muted small mb-0">Dual-pane synchronized scrolling viewer directly linking query sentences to matching reference sources.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-success-subtle text-success rounded-3 p-2">
+                <i class="bi bi-journal-bookmark fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Citation & Reference Audit</h6>
+            </div>
+            <p class="text-muted small mb-0">Validates in-text citations against the bibliography, flagging orphan entries and missing references.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card card-modern h-100 p-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <div class="bg-secondary-subtle text-secondary-emphasis rounded-3 p-2">
+                <i class="bi bi-file-earmark-arrow-down fs-4"></i>
+              </div>
+              <h6 class="fw-bold mb-0">Downloadable PDF Reports</h6>
+            </div>
+            <p class="text-muted small mb-0">Professional academic reports generated with ReportLab featuring metrics, tables, and annotated excerpts.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Recent Analyses Section -->
+    {% if recent_analyses %}
+    <div class="card card-modern shadow-sm p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i> Recent Analyses</h5>
+        <a href="{{ url_for('web.history_view') }}" class="btn btn-sm btn-link text-decoration-none">View All History &rarr;</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-modern align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Document</th>
+              <th>Date</th>
+              <th>Plagiarism %</th>
+              <th>AI Likelihood %</th>
+              <th>Readability Grade</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in recent_analyses %}
+            <tr>
+              <td>
+                <div class="fw-bold text-dark">{{ a.document.filename }}</div>
+                <small class="text-muted">{{ a.document.word_count }} words • .{{ a.document.file_type.upper() }}</small>
+              </td>
+              <td>{{ a.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+              <td>
+                <span class="badge {% if a.plagiarism_score > 25 %}bg-danger{% elif a.plagiarism_score > 10 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                  {{ a.plagiarism_score }}%
+                </span>
+              </td>
+              <td>
+                <span class="badge {% if a.ai_likelihood_score > 50 %}bg-warning text-dark{% elif a.ai_likelihood_score > 25 %}bg-info text-dark{% else %}bg-success{% endif %}">
+                  {{ a.ai_likelihood_score }}% ({{ a.ai_risk_level }})
+                </span>
+              </td>
+              <td>Grade {{ a.flesch_kincaid_grade }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('web.analyze_view', analysis_id=a.id) }}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye me-1"></i> View
+                </a>
+                <a href="{{ url_for('reports.download_pdf_report', analysis_id=a.id) }}" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-download"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

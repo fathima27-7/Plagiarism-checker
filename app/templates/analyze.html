@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block title %}Analysis: {{ document.filename }} – PlagiScan AI{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{{ url_for('web.index') }}" class="text-decoration-none">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Document Analysis #{{ analysis.id }}</li>
+      </ol>
+    </nav>
+    <h2 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-text text-primary"></i> {{ document.filename }}
+    </h2>
+    <small class="text-muted">
+      Uploaded {{ analysis.created_at.strftime('%B %d, %Y at %H:%M') }} • {{ document.word_count }} words • {{ analysis.sentence_count }} sentences • .{{ document.file_type.upper() }}
+    </small>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <!-- Download PDF Report (Feature 13) -->
+    <a href="{{ url_for('reports.download_pdf_report', analysis_id=analysis.id) }}" class="btn btn-success shadow-sm">
+      <i class="bi bi-file-earmark-arrow-down me-1"></i> Download PDF Report
+    </a>
+    <!-- Compare Side-by-Side (Feature 7) -->
+    <a href="{{ url_for('web.compare_view') }}?doc1_id={{ document.id }}" class="btn btn-outline-primary">
+      <i class="bi bi-layout-split me-1"></i> Compare Side-by-Side
+    </a>
+    <!-- Delete Record (Feature 14) -->
+    <button type="button" class="btn btn-outline-danger" id="btnDeleteAnalysis" data-doc-id="{{ document.id }}" data-analysis-id="{{ analysis.id }}">
+      <i class="bi bi-trash3 me-1"></i> Delete
+    </button>
+  </div>
+</div>
+
+<!-- TOP HERO METRICS (Feature 5, Feature 6, Feature 10) -->
+<div class="row g-3 mb-4">
+  
+  <!-- Plagiarism Similarity Percentage (Feature 5) -->
+  <div class="col-md-4">
+    <div class="metric-card shadow-sm border-start border-4 {% if analysis.plagiarism_score > 25 %}border-danger{% elif analysis.plagiarism_score > 10 %}border-warning{% else %}border-success{% endif %}">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="metric-label mb-1">Plagiarism Similarity</div>
+          <div class="metric-value {% if analysis.plagiarism_score > 25 %}text-danger{% elif analysis.plagiarism_score > 10 %}text-warning{% else %}text-success{% endif %}">
+            {{ analysis.plagiarism_score }}%
+          </div>
+        </div>
+        <div class="p-2 rounded-3 bg-light">
+          <i class="bi bi-copy fs-3 text-muted"></i>
+        </div>
+      </div>
+      <div class="small text-muted mt-2">
+        {% if analysis.plagiarism_matches|length > 0 %}
+          <strong>{{ analysis.plagiarism_matches|length }}</strong> matching passage(s) with reference corpus
+        {% else %}
+          No significant textual overlap found
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Likelihood Percentage at Top (Feature 6 & Feature 3) -->
+  <div class="col-md-4">
+    <div class="metric-card shadow-sm border-start border-4 {% if analysis.ai_likelihood_score > 50 %}border-warning{% elif analysis.ai_likelihood_score > 25 %}border-info{% else %}border-success{% endif %}">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="metric-label mb-1">AI Likelihood Estimate</div>
+          <div class="metric-value {% if analysis.ai_likelihood_score > 50 %}text-warning-emphasis{% elif analysis.ai_likelihood_score > 25 %}text-primary{% else %}text-success{% endif %}">
+            {{ analysis.ai_likelihood_score }}%
+          </div>
+        </div>
+        <div class="p-2 rounded-3 bg-light">
+          <i class="bi bi-cpu fs-3 text-muted"></i>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="badge {% if analysis.ai_risk_level == 'High' %}bg-danger{% elif analysis.ai_risk_level == 'Moderate' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+          Risk Tier: {{ analysis.ai_risk_level }}
+        </span>
+        <small class="text-muted">Perplexity & Burstiness Model</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Readability Grade (Feature 10) -->
+  <div class="col-md-4">
+    <div class="metric-card shadow-sm border-start border-4 border-primary">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="metric-label mb-1">Readability Index</div>
+          <div class="metric-value text-primary">
+            Grade {{ analysis.flesch_kincaid_grade }}
+          </div>
+        </div>
+        <div class="p-2 rounded-3 bg-light">
+          <i class="bi bi-book fs-3 text-muted"></i>
+        </div>
+      </div>
+      <div class="small text-muted mt-2">
+        Reading Ease: <strong>{{ analysis.flesch_reading_ease }}/100</strong> • Est. ~{{ analysis.reading_time_minutes }} min read
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interactive Visuals (Chart.js) -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card card-modern p-4 h-100">
+      <h6 class="fw-bold mb-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-bar-chart-fill me-2 text-primary"></i> Section-Wise Plagiarism vs AI Likelihood</span>
+        <small class="text-muted fw-normal">Section breakdown</small>
+      </h6>
+      <div style="height: 250px;">
+        <canvas id="sectionScoreChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-modern p-4 h-100">
+      <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i> Content Composition</h6>
+      <div style="height: 200px;">
+        <canvas id="compositionDoughnut"></canvas>
+      </div>
+      <div class="text-center mt-2 small text-muted">
+        Original vs Matched vs AI-Assisted Proportions
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Analysis Work Area: Tabs & Highlight Viewer -->
+<div class="card card-modern shadow-sm mb-5">
+  <div class="card-header bg-white border-bottom p-3">
+    <ul class="nav nav-tabs card-header-tabs" id="analysisTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active fw-semibold" id="document-tab" data-bs-toggle="tab" data-bs-target="#tab-document" type="button">
+          <i class="bi bi-file-text me-1"></i> Annotated Document & Highlights
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="sections-tab" data-bs-toggle="tab" data-bs-target="#tab-sections" type="button">
+          <i class="bi bi-diagram-3 me-1"></i> Section Analysis ({{ sections|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="citations-tab" data-bs-toggle="tab" data-bs-target="#tab-citations" type="button">
+          <i class="bi bi-journal-check me-1"></i> Citation Checker ({{ citations|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="readability-tab" data-bs-toggle="tab" data-bs-target="#tab-readability" type="button">
+          <i class="bi bi-spellcheck me-1"></i> Grammar & Readability
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="suggestions-tab" data-bs-toggle="tab" data-bs-target="#tab-suggestions" type="button">
+          <i class="bi bi-lightbulb me-1"></i> Smart Suggestions ({{ suggestions|length }})
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card-body p-4">
+    <div class="tab-content" id="analysisTabsContent">
+
+      <!-- TAB 1: ANNOTATED DOCUMENT & HIGHLIGHTS (Feature 4: Yellow highlighting) -->
+      <div class="tab-pane fade show active" id="tab-document" role="tabpanel">
+        
+        <!-- Legend & Filter Controls -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 gap-2">
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="fw-semibold small text-dark"><i class="bi bi-palette me-1"></i> Annotations:</span>
+            <!-- Yellow AI Legend -->
+            <span class="legend-pill legend-yellow">
+              <i class="bi bi-square-fill text-warning"></i> Yellow Highlight: Suspected AI-Generated (Prob &ge; 65%)
+            </span>
+            <!-- Red Plagiarism Legend -->
+            <span class="legend-pill legend-red">
+              <i class="bi bi-square-fill text-danger"></i> Red Highlight: Plagiarism Match (Cosine &ge; 55%)
+            </span>
+          </div>
+
+          <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="toggleAIHighlight" checked>
+              <label class="form-check-label small fw-semibold" for="toggleAIHighlight">Show AI (Yellow)</label>
+            </div>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" id="togglePlagHighlight" checked>
+              <label class="form-check-label small fw-semibold" for="togglePlagHighlight">Show Plagiarism (Red)</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rendered Text Container -->
+        <div class="document-view-container" id="annotatedTextContainer">
+          <!-- Populated by JavaScript with highlight marks -->
+          <div class="text-center py-5 text-muted">
+            <div class="spinner-border spinner-border-sm text-primary me-2"></div> Rendering annotated document text...
+          </div>
+        </div>
+
+        <!-- Selected Sentence Details Card (Interactive inspection) -->
+        <div id="inspectorCard" class="card bg-light border p-3 mt-3 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0 text-dark" id="inspectorTitle">Sentence Inspection</h6>
+            <button type="button" class="btn btn-sm btn-close" onclick="document.getElementById('inspectorCard').classList.add('d-none')"></button>
+          </div>
+          <p class="mb-2 fst-italic" id="inspectorText">"..."</p>
+          <div class="d-flex flex-wrap gap-3 small text-muted" id="inspectorDetails">
+            <!-- Dynamic parameters -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 2: SECTION-WISE DOCUMENT ANALYSIS (Feature 9) -->
+      <div class="tab-pane fade" id="tab-sections" role="tabpanel">
+        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 text-primary me-2"></i> Section-Wise Breakdown</h5>
+        <p class="text-muted small mb-4">
+          Academic papers are structured in sequential modules. PlagiScan AI evaluates each identified section independently to isolate problematic chapters.
+        </p>
+
+        <div class="table-responsive">
+          <table class="table table-hover table-modern align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Section Title</th>
+                <th>Word Count</th>
+                <th>Plagiarism Similarity</th>
+                <th>AI Likelihood</th>
+                <th>Excerpt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sec in sections %}
+              <tr>
+                <td class="fw-bold text-dark">{{ sec.section_name }}</td>
+                <td>{{ sec.word_count }} words</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px; width: 70px;">
+                      <div class="progress-bar {% if sec.plagiarism_score > 25 %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ sec.plagiarism_score }}%"></div>
+                    </div>
+                    <span class="badge {% if sec.plagiarism_score > 25 %}bg-danger{% else %}bg-light text-dark border{% endif %}">{{ sec.plagiarism_score }}%</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px; width: 70px;">
+                      <div class="progress-bar {% if sec.ai_score > 50 %}bg-warning{% else %}bg-info{% endif %}" style="width: {{ sec.ai_score }}%"></div>
+                    </div>
+                    <span class="badge {% if sec.ai_score > 50 %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ sec.ai_score }}%</span>
+                  </div>
+                </td>
+                <td class="text-muted small" style="max-width: 320px;">
+                  {{ sec.content_snippet }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: CITATION & REFERENCE CHECKER (Feature 8) -->
+      <div class="tab-pane fade" id="tab-citations" role="tabpanel">
+        <h5 class="fw-bold mb-3"><i class="bi bi-journal-check text-primary me-2"></i> Citation & Reference Audit</h5>
+        <div class="row g-3 mb-4">
+          <div class="col-md-3">
+            <div class="card bg-light border-0 p-3 text-center">
+              <div class="display-6 fw-bold text-dark">{{ analysis.citation_count }}</div>
+              <small class="text-muted fw-semibold">In-Text Citations Found</small>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card bg-light border-0 p-3 text-center">
+              <div class="display-6 fw-bold text-danger">{{ analysis.uncited_sources_count }}</div>
+              <small class="text-muted fw-semibold">Unreferenced / Orphan Entries</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover table-modern align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Citation Marker</th>
+                <th>Standard Style</th>
+                <th>Status in Bibliography</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in citations %}
+              <tr>
+                <td class="fw-bold text-dark font-monospace">{{ c.citation_text }}</td>
+                <td><span class="badge bg-light text-dark border">{{ c.citation_type }}</span></td>
+                <td>
+                  {% if c.is_in_bibliography %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                      <i class="bi bi-check-circle-fill me-1"></i> Verified in References
+                    </span>
+                  {% else %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i> Unmatched Reference
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center py-4 text-muted">
+                  No standard citations detected in this document.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: GRAMMAR & READABILITY ANALYSIS (Feature 10) -->
+      <div class="tab-pane fade" id="tab-readability" role="tabpanel">
+        <h5 class="fw-bold mb-3"><i class="bi bi-spellcheck text-primary me-2"></i> Readability & Stylometric Profiling</h5>
+        <div class="row g-4">
+          <div class="col-md-6">
+            <ul class="list-group list-group-flush border rounded-3">
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <div>
+                  <div class="fw-bold">Flesch Reading Ease</div>
+                  <small class="text-muted">Standard 0-100 comprehension scale</small>
+                </div>
+                <span class="badge bg-primary fs-6">{{ analysis.flesch_reading_ease }} / 100</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <div>
+                  <div class="fw-bold">Flesch-Kincaid Grade Level</div>
+                  <small class="text-muted">Equivalent US schooling grade</small>
+                </div>
+                <span class="badge bg-dark fs-6">Grade {{ analysis.flesch_kincaid_grade }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <div>
+                  <div class="fw-bold">Lexical Diversity (Type-Token Ratio)</div>
+                  <small class="text-muted">Ratio of unique words to total words</small>
+                </div>
+                <span class="badge bg-light text-dark border fs-6">{{ analysis.lexical_diversity }}</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                <div>
+                  <div class="fw-bold">Estimated Reading Time</div>
+                  <small class="text-muted">Based on average 200 WPM</small>
+                </div>
+                <span class="text-muted fw-semibold">~{{ analysis.reading_time_minutes }} minutes</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="card bg-light border-0 p-4 h-100">
+              <h6 class="fw-bold mb-2">Academic Readability Interpretation</h6>
+              <p class="text-muted small">
+                Academic research generally targets a Flesch-Kincaid Grade between 12 and 16 (Undergraduate to Graduate level).
+              </p>
+              <div class="alert alert-info py-2 small mb-0">
+                <i class="bi bi-info-circle me-1"></i> Text complexity correlates with scholarly vocabulary. If grade exceeds 18, consider splitting overly long compound clauses.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: SMART IMPROVEMENT SUGGESTIONS (Feature 15) -->
+      <div class="tab-pane fade" id="tab-suggestions" role="tabpanel">
+        <h5 class="fw-bold mb-3"><i class="bi bi-lightbulb text-primary me-2"></i> Smart Academic Improvement Suggestions</h5>
+        <div class="d-flex flex-column gap-3">
+          {% for sug in suggestions %}
+          <div class="card card-modern p-3 border-start border-4 {% if sug.severity == 'high' %}border-danger{% elif sug.severity == 'warning' %}border-warning{% else %}border-primary{% endif %}">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="badge {% if sug.severity == 'high' %}bg-danger{% elif sug.severity == 'warning' %}bg-warning text-dark{% else %}bg-primary{% endif %}">
+                {{ sug.category }}
+              </span>
+              <small class="text-muted text-uppercase fw-bold">{{ sug.severity }}</small>
+            </div>
+            <h6 class="fw-bold text-dark mt-2 mb-1">{{ sug.title }}</h6>
+            <p class="text-muted small mb-2">{{ sug.suggestion_text }}</p>
+            {% if sug.example_text %}
+            <div class="bg-light p-2 rounded small text-dark font-monospace">
+              <i class="bi bi-arrow-right-short text-primary"></i> {{ sug.example_text }}
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i> No critical suggestions. Your document adheres well to academic standards!
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.ANALYSIS_DATA = {
+    analysisId: {{ analysis.id }},
+    documentId: {{ document.id }},
+    rawText: {{ document.raw_text|tojson }},
+    matches: [
+      {% for m in matches %}
+      {
+        id: {{ m.id }},
+        sentenceIndex: {{ m.sentence_index or 0 }},
+        queryText: {{ m.query_text|tojson }},
+        matchedText: {{ m.matched_text|tojson }},
+        similarity: {{ m.similarity_percentage }},
+        sourceTitle: {{ m.source_title|tojson }},
+        startChar: {{ m.start_char or 0 }},
+        endChar: {{ m.end_char or 0 }}
+      },
+      {% endfor %}
+    ],
+    aiSentences: [
+      {% for s in ai_sentences %}
+      {
+        sentenceIndex: {{ s.sentence_index }},
+        sentenceText: {{ s.sentence_text|tojson }},
+        aiProb: {{ s.ai_probability }},
+        perplexity: {{ s.perplexity_score }},
+        burstiness: {{ s.burstiness_score }},
+        isFlagged: {{ 'true' if s.is_flagged else 'false' }},
+        startChar: {{ s.start_char or 0 }},
+        endChar: {{ s.end_char or 0 }}
+      },
+      {% endfor %}
+    ],
+    sections: [
+      {% for sec in sections %}
+      {
+        name: {{ sec.section_name|tojson }},
+        plagiarism: {{ sec.plagiarism_score }},
+        ai: {{ sec.ai_score }},
+        words: {{ sec.word_count }}
+      },
+      {% endfor %}
+    ],
+    plagiarismScore: {{ analysis.plagiarism_score }},
+    aiScore: {{ analysis.ai_likelihood_score }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,169 @@
+:root {
+  --ps-primary: #2563eb;
+  --ps-primary-hover: #1d4ed8;
+  --ps-dark: #0f172a;
+  --ps-surface: #ffffff;
+  --ps-background: #f8fafc;
+  --ps-border: #e2e8f0;
+  --ps-text: #334155;
+  --ps-text-muted: #64748b;
+  --ps-ai-yellow: #fef08a;
+  --ps-ai-border: #eab308;
+  --ps-plag-red: #fecaca;
+  --ps-plag-border: #ef4444;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--ps-background);
+  color: var(--ps-text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* Navbar */
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--ps-dark) !important;
+}
+
+.brand-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+/* Hero Cards & Surfaces */
+.card-modern {
+  background: var(--ps-surface);
+  border: 1px solid var(--ps-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  transform: translateY(-2px);
+}
+
+/* Hero Stat Badges */
+.metric-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--ps-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card .metric-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.metric-card .metric-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ps-text-muted);
+}
+
+/* Upload Dropzone */
+.dropzone-area {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone-area:hover, .dropzone-area.dragover {
+  border-color: var(--ps-primary);
+  background: #eff6ff;
+}
+
+.dropzone-icon {
+  font-size: 3rem;
+  color: var(--ps-primary);
+  margin-bottom: 1rem;
+}
+
+/* Document Viewer & Highlights */
+.document-view-container {
+  background: #ffffff;
+  border: 1px solid var(--ps-border);
+  border-radius: 12px;
+  padding: 2rem;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  max-height: 700px;
+  overflow-y: auto;
+  font-family: 'Georgia', serif;
+}
+
+/* Dual Pane Comparison Viewer */
+.diff-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  height: 650px;
+}
+
+.diff-pane {
+  background: #ffffff;
+  border: 1px solid var(--ps-border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.diff-pane-header {
+  position: sticky;
+  top: -1.5rem;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  margin: -1.5rem -1.5rem 1rem -1.5rem;
+  border-bottom: 1px solid var(--ps-border);
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* Badges & Tables */
+.table-modern thead th {
+  background-color: #f1f5f9;
+  color: var(--ps-dark);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--ps-border);
+}
+
+.table-modern td {
+  vertical-align: middle;
+  font-size: 0.92rem;
+}
+
+/* Footer */
+footer {
+  background: #ffffff;
+  border-top: 1px solid var(--ps-border);
+  padding: 2rem 0;
+  font-size: 0.875rem;
+  color: var(--ps-text-muted);
+}

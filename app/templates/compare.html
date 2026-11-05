@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Side-by-Side Document Comparison – PlagiScan AI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-1"><i class="bi bi-layout-split text-primary me-2"></i> Side-by-Side Document Comparison</h2>
+    <p class="text-muted small mb-0">Synchronized visual comparison between two documents with cross-pane sentence alignment.</p>
+  </div>
+</div>
+
+<!-- Document Selection Toolbar -->
+<div class="card card-modern p-3 mb-4">
+  <div class="row g-3 align-items-center">
+    <div class="col-md-5">
+      <label class="form-label fw-semibold small mb-1">Target Document (Doc 1)</label>
+      <select class="form-select" id="selectDoc1">
+        <option value="">Select first document...</option>
+        {% for doc in documents %}
+        <option value="{{ doc.id }}" {% if request.args.get('doc1_id')|int == doc.id %}selected{% endif %}>
+          {{ doc.filename }} ({{ doc.word_count }} words)
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2 text-center">
+      <div class="fw-bold text-muted small mb-1">Pairwise Diff</div>
+      <button type="button" class="btn btn-primary w-100 fw-bold" id="btnRunCompare">
+        <i class="bi bi-arrow-left-right me-1"></i> Compare
+      </button>
+    </div>
+
+    <div class="col-md-5">
+      <label class="form-label fw-semibold small mb-1">Reference Document (Doc 2)</label>
+      <select class="form-select" id="selectDoc2">
+        <option value="">Select second document...</option>
+        {% for doc in documents %}
+        <option value="{{ doc.id }}">
+          {{ doc.filename }} ({{ doc.word_count }} words)
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison Metrics Bar -->
+<div id="diffMetricsBar" class="d-none alert alert-light border d-flex justify-content-between align-items-center mb-4 py-3">
+  <div class="d-flex align-items-center gap-3">
+    <div class="display-6 fw-bold text-primary" id="diffSimilarityScore">0.0%</div>
+    <div>
+      <div class="fw-bold text-dark">Overall Pairwise Similarity</div>
+      <small class="text-muted">TF-IDF Vector Cosine Alignment</small>
+    </div>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <div class="form-check form-switch mb-0">
+      <input class="form-check-input" type="checkbox" id="syncScrollToggle" checked>
+      <label class="form-check-label small fw-semibold" for="syncScrollToggle">Synchronized Scrolling</label>
+    </div>
+  </div>
+</div>
+
+<!-- Dual Pane Diff Viewer -->
+<div class="diff-container mb-5">
+  <!-- Left Pane -->
+  <div class="diff-pane" id="pane1">
+    <div class="diff-pane-header d-flex justify-content-between align-items-center">
+      <span id="pane1Title">Document 1</span>
+      <span class="badge bg-secondary" id="pane1MatchCount">0 matches</span>
+    </div>
+    <div id="pane1Content" class="text-muted py-5 text-center">
+      Select documents above and click <strong>Compare</strong> to load side-by-side view.
+    </div>
+  </div>
+
+  <!-- Right Pane -->
+  <div class="diff-pane" id="pane2">
+    <div class="diff-pane-header d-flex justify-content-between align-items-center">
+      <span id="pane2Title">Document 2</span>
+      <span class="badge bg-secondary" id="pane2MatchCount">0 matches</span>
+    </div>
+    <div id="pane2Content" class="text-muted py-5 text-center">
+      Select documents above and click <strong>Compare</strong> to load side-by-side view.
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/diff_viewer.js') }}"></script>
+{% endblock %}

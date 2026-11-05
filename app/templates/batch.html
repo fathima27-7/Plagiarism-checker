@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Multiple Document Comparison Matrix – PlagiScan AI{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h2 class="fw-bold mb-1"><i class="bi bi-grid-3x3-gap text-primary me-2"></i> Multiple Document Comparison (Batch Matrix)</h2>
+  <p class="text-muted small mb-0">
+    Upload multiple assignments or papers simultaneously to compute a comprehensive cross-similarity matrix across all documents.
+  </p>
+</div>
+
+<!-- Batch Upload Card -->
+<div class="card card-modern p-4 mb-4">
+  <h5 class="fw-bold mb-3"><i class="bi bi-files text-primary me-2"></i> Select Batch Files</h5>
+  <div class="dropzone-area" id="batchDropzone">
+    <i class="bi bi-folder-symlink dropzone-icon"></i>
+    <h5 class="fw-bold mb-2">Drag and drop multiple documents here</h5>
+    <p class="text-muted small mb-3">Select 2 to 10 files (.pdf, .docx, .txt)</p>
+    <button type="button" class="btn btn-outline-primary px-4 rounded-pill" onclick="document.getElementById('batchFileInput').click()">
+      <i class="bi bi-plus-lg me-1"></i> Select Files
+    </button>
+    <input type="file" id="batchFileInput" class="d-none" multiple accept=".pdf,.docx,.doc,.txt">
+  </div>
+
+  <div id="batchSelectedList" class="mt-3 d-none">
+    <h6 class="fw-bold small text-muted text-uppercase mb-2">Selected for Batch Analysis:</h6>
+    <div class="d-flex flex-wrap gap-2 mb-3" id="batchFileBadges"></div>
+    <button type="button" class="btn btn-primary fw-bold px-4" id="btnRunBatch">
+      <i class="bi bi-play-circle me-1"></i> Compute Similarity Matrix
+    </button>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="batchLoading" class="text-center py-4 d-none">
+    <div class="spinner-border text-primary mb-2"></div>
+    <div class="fw-semibold text-muted">Calculating TF-IDF cross-similarity matrix...</div>
+  </div>
+</div>
+
+<!-- Matrix Results Section -->
+<div id="batchResultSection" class="d-none">
+  <div class="card card-modern p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i> Pairwise Similarity Matrix (%)</h5>
+      <span class="badge bg-light text-dark border">Values indicate TF-IDF Cosine Overlap</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-modern text-center align-middle" id="matrixTable">
+        <!-- Rendered dynamically -->
+      </table>
+    </div>
+
+    <!-- Heatmap Legend -->
+    <div class="d-flex align-items-center gap-3 mt-3 small text-muted">
+      <span>Heatmap Scale:</span>
+      <span class="badge" style="background-color: #f8fafc; color: #334155; border: 1px solid #cbd5e1;">&lt; 15% Low</span>
+      <span class="badge" style="background-color: #fef08a; color: #854d0e;">15% - 35% Moderate</span>
+      <span class="badge" style="background-color: #fecaca; color: #991b1b;">&gt; 35% High Overlap</span>
+      <span class="badge" style="background-color: #dc2626; color: white;">100% Identical</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/batch.js') }}"></script>
+{% endblock %}
