@@ -14,6 +14,8 @@ def create_app(config_class=Config):
     # Ensure required runtime directories exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['TEMP_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['REFERENCE_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['GENERATED_REPORTS_FOLDER'], exist_ok=True)
     os.makedirs(app.config['CORPUS_FOLDER'], exist_ok=True)
 
     # Initialize extensions
@@ -39,36 +41,42 @@ def create_app(config_class=Config):
     return app
 
 def seed_reference_corpus(app):
-    """Indexes initial reference papers from corpus/reference_papers/ into SQLite."""
+    """Indexes initial reference papers from reference_documents/ or corpus/ into SQLite."""
     from app.models.document import Document
-    from app.services.extractor_service import ExtractorService
+    from app.document_processing import DocumentExtractor
 
-    corpus_dir = app.config['CORPUS_FOLDER']
-    if not os.path.exists(corpus_dir):
-        return
+    # Check primary reference_documents folder first, fallback to corpus folder
+    candidate_folders = [
+        app.config.get('REFERENCE_FOLDER'),
+        app.config.get('CORPUS_FOLDER')
+    ]
 
-    for filename in os.listdir(corpus_dir):
-        if filename.endswith(('.txt', '.pdf', '.docx')):
-            filepath = os.path.join(corpus_dir, filename)
-            file_hash = ExtractorService.compute_sha256(filepath)
-            
-            existing = Document.query.filter_by(file_hash=file_hash).first()
-            if not existing:
-                try:
-                    ext = filename.rsplit('.', 1)[1].lower()
-                    extracted = ExtractorService.extract_text(filepath, ext)
-                    doc = Document(
-                        filename=filename,
-                        file_type=ext,
-                        file_path=filepath,
-                        file_hash=file_hash,
-                        raw_text=extracted['clean_text'],
-                        word_count=extracted['word_count'],
-                        character_count=extracted['character_count'],
-                        is_reference=True
-                    )
-                    db.session.add(doc)
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    print(f"Failed to seed reference paper {filename}: {e}")
+    for corpus_dir in candidate_folders:
+        if not corpus_dir or not os.path.exists(corpus_dir):
+            continue
+
+        for filename in os.listdir(corpus_dir):
+            if filename.endswith(('.txt', '.pdf', '.docx')):
+                filepath = os.path.join(corpus_dir, filename)
+                file_hash = DocumentExtractor.compute_sha256(filepath)
+                
+                existing = Document.query.filter_by(file_hash=file_hash).first()
+                if not existing:
+                    try:
+                        ext = filename.rsplit('.', 1)[1].lower()
+                        extracted = DocumentExtractor.extract_text(filepath, ext)
+                        doc = Document(
+                            filename=filename,
+                            file_type=ext,
+                            file_path=filepath,
+                            file_hash=file_hash,
+                            raw_text=extracted['clean_text'],
+                            word_count=extracted['word_count'],
+                            character_count=extracted['character_count'],
+                            is_reference=True
+                        )
+                        db.session.add(doc)
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"Failed to seed reference paper {filename}: {e}")

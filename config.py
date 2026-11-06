@@ -9,9 +9,11 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Upload configurations
+    # Storage and folder paths
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'documents')
     TEMP_FOLDER = os.path.join(BASE_DIR, 'uploads', 'temp')
+    REFERENCE_FOLDER = os.path.join(BASE_DIR, 'reference_documents')
+    GENERATED_REPORTS_FOLDER = os.path.join(BASE_DIR, 'generated_reports')
     CORPUS_FOLDER = os.path.join(BASE_DIR, 'corpus', 'reference_papers')
     
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload size
@@ -20,4 +22,3 @@ class Config:
     # Analysis thresholds
     PLAGIARISM_MATCH_THRESHOLD = 0.55  # Sentence similarity threshold (Cosine >= 0.55)
     AI_FLAG_THRESHOLD = 0.65           # Sentence AI probability threshold
-

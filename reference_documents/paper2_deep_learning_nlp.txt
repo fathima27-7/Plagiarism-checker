@@ -1,0 +1,29 @@
+Title: Attention Mechanisms and Transformer Architectures in Modern NLP
+Authors: Sarah Jenkins, David K. Liu
+Transactions on Computational Linguistics, 2022
+
+Abstract
+Natural language processing has undergone a transformative paradigm shift with the advent of self-attention mechanisms and transformer neural networks. Prior sequence modeling techniques relied heavily on recurrent neural networks and long short-term memory units, which suffered from vanishing gradients and sequential computational bottlenecks. The transformer architecture abandons recurrence entirely, relying upon multi-head scaled dot-product self-attention to capture long-range contextual dependencies across tokens. This paper surveys fundamental advances in transformer architectures, bidirectional encoder representations, autoregressive generative models, and scaling laws.
+
+1. Introduction
+The core challenge in processing human language with computation lies in modeling syntax, semantics, and contextual nuance across arbitrary sequence lengths. Recurrent models process text sequentially from left to right, maintaining a hidden state vector that compresses past information. Consequently, information from distant tokens degrades substantially across sequential updates. Transformers solve this fundamental limitation by providing direct computational pathways between all pairs of words in an input sequence.
+
+2. Literature Review
+The foundational breakthrough was established by Vaswani et al. (2017), introducing the scaled dot-product attention function. Subsequently, Devlin et al. (2018) developed BERT, demonstrating that bidirectional contextual pretraining on masked language modeling objectives yields superior generalized representations for downstream classification tasks. Concurrent work on generative pretraining demonstrated the power of autoregressive decoder architectures in few-shot prompting (Brown et al., 2020).
+
+3. Methodology
+Given input vectors mapped to queries Q, keys K, and values V of dimension d_k, the scaled dot-product attention is defined as:
+Attention(Q, K, V) = softmax((Q * K^T) / sqrt(d_k)) * V
+Multi-head attention projects the queries, keys, and values h times with independently learned linear parameter matrices. This enables the model to jointly attend to contextual information from different representation subspaces at different positions. Positional encodings based on sinusoidal functions or learnable absolute embeddings are injected to retain word order.
+
+4. Results and Discussion
+Empirical evaluations demonstrate that multi-head attention achieves state-of-the-art BLEU scores on machine translation benchmarks while reducing training wall-clock time by an order of magnitude. Furthermore, scaling parameters alongside token corpus size yields predictable power-law improvements in cross-entropy loss, validating modern scaling hypotheses.
+
+5. Conclusion
+Transformers constitute the prevailing architectural standard across modern computational linguistics, extending also to multimodal computer vision and speech recognition. Addressing computational quadratic complexity with respect to sequence length remains an active frontier.
+
+References
+[1] T. Brown, B. Mann, N. Ryder, and M. Subbiah, "Language models are few-shot learners," Advances in Neural Information Processing Systems (NeurIPS), 2020.
+[2] J. Devlin, M. Chang, K. Lee, and K. Toutanova, "BERT: Pre-training of deep bidirectional transformers for language understanding," NAACL, 2018.
+[3] A. Vaswani, N. Shazeer, N. Parmar, and J. Uszkoreit, "Attention is all you need," Advances in Neural Information Processing Systems (NeurIPS), 2017.
+

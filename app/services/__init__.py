@@ -1,11 +1,15 @@
-from app.services.extractor_service import ExtractorService
-from app.services.plagiarism_service import PlagiarismService
-from app.services.ai_detector_service import AIDetectorService
-from app.services.citation_service import CitationService
-from app.services.section_service import SectionService
-from app.services.readability_service import ReadabilityService
-from app.services.suggestion_service import SuggestionService
-from app.services.report_service import ReportService
+"""
+Bridge module ensuring backwards compatibility with app.services imports.
+Maps directly to the dedicated engine folders.
+"""
+from app.document_processing.extractor import DocumentExtractor as ExtractorService
+from app.plagiarism_engine.detector import PlagiarismDetector as PlagiarismService
+from app.ai_engine.detector import AIDetector as AIDetectorService
+from app.citation_checker.checker import CitationChecker as CitationService
+from app.section_analyzer.analyzer import SectionAnalyzer as SectionService
+from app.writing_quality.readability import QualityAnalyzer as ReadabilityService
+from app.writing_quality.suggestions import QualitySuggester as SuggestionService
+from app.report_generator.generator import PDFReportGenerator as ReportService
 
 __all__ = [
     'ExtractorService',
@@ -17,4 +21,3 @@ __all__ = [
     'SuggestionService',
     'ReportService'
 ]
-

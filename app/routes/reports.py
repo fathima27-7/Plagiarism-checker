@@ -1,6 +1,6 @@
 from flask import Blueprint, send_file, abort
 from app.models.analysis import AnalysisResult
-from app.services.report_service import ReportService
+from app.report_generator import PDFReportGenerator
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
 
@@ -16,7 +16,7 @@ def download_pdf_report(analysis_id):
     sections = analysis.sections
     suggestions = analysis.suggestions
 
-    pdf_buffer = ReportService.generate_pdf(
+    pdf_buffer = PDFReportGenerator.generate_pdf(
         analysis=analysis,
         document=doc,
         matches=matches,

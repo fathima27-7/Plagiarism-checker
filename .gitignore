@@ -1,0 +1,26 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd.disabled
+
+# SQLite database
+*.sqlite3
+*.db-journal
+
+# Environment variables
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Temporary uploads (keep directory with .gitkeep)
+uploads/temp/*
+!uploads/temp/.gitkeep
+generated_reports/*
+!generated_reports/.gitkeep
+
+# IDEs
+.vscode/
+.idea/

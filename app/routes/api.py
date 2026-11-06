@@ -9,13 +9,12 @@ from app.models.ai_sentence import AISentenceScore
 from app.models.section import SectionMetric
 from app.models.citation import CitationItem
 from app.models.suggestion import SmartSuggestion
-from app.services.extractor_service import ExtractorService
-from app.services.plagiarism_service import PlagiarismService
-from app.services.ai_detector_service import AIDetectorService
-from app.services.citation_service import CitationService
-from app.services.section_service import SectionService
-from app.services.readability_service import ReadabilityService
-from app.services.suggestion_service import SuggestionService
+from app.document_processing import DocumentExtractor
+from app.plagiarism_engine import PlagiarismDetector
+from app.ai_engine import AIDetector
+from app.citation_checker import CitationChecker
+from app.section_analyzer import SectionAnalyzer
+from app.writing_quality import QualityAnalyzer, QualitySuggester
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -45,8 +44,8 @@ def upload_document():
 
     try:
         ext = filename.rsplit('.', 1)[1].lower()
-        extracted = ExtractorService.extract_text(file_path, ext)
-        file_hash = ExtractorService.compute_sha256(file_path)
+        extracted = DocumentExtractor.extract_text(file_path, ext)
+        file_hash = DocumentExtractor.compute_sha256(file_path)
 
         # Check if identical document already exists
         existing_doc = Document.query.filter_by(file_hash=file_hash).first()
@@ -94,26 +93,26 @@ def trigger_analysis():
         ref_docs = Document.query.filter(Document.id != doc.id).all()
 
         # 2. Run Plagiarism Detection
-        plag_result = PlagiarismService.analyze_document(
+        plag_result = PlagiarismDetector.analyze_document(
             doc,
             ref_docs,
             similarity_threshold=current_app.config.get('PLAGIARISM_MATCH_THRESHOLD', 0.55)
         )
 
         # 3. Run AI Likelihood Estimation
-        ai_result = AIDetectorService.analyze_document(
+        ai_result = AIDetector.analyze_document(
             doc.raw_text,
             ai_flag_threshold=current_app.config.get('AI_FLAG_THRESHOLD', 0.65)
         )
 
         # 4. Run Readability & Grammar Analysis
-        readability_result = ReadabilityService.analyze(doc.raw_text)
+        readability_result = QualityAnalyzer.analyze(doc.raw_text)
 
         # 5. Run Citation Audit
-        citation_result = CitationService.audit_citations(doc.raw_text)
+        citation_result = CitationChecker.audit_citations(doc.raw_text)
 
         # 6. Run Section-Wise Breakdown
-        sections_data = SectionService.parse_sections(
+        sections_data = SectionAnalyzer.parse_sections(
             doc.raw_text,
             matches=plag_result['matches'],
             ai_sentences=ai_result['sentence_analyses']
@@ -128,7 +127,7 @@ def trigger_analysis():
             'sections': sections_data,
             'matches': plag_result['matches']
         }
-        suggestions_data = SuggestionService.generate_suggestions(combined_data)
+        suggestions_data = QualitySuggester.generate_suggestions(combined_data)
 
         # 8. Persist Analysis in DB
         analysis = AnalysisResult(
@@ -263,7 +262,7 @@ def compare_documents():
     if not doc1 or not doc2:
         return jsonify({'error': 'One or both documents could not be found.'}), 404
 
-    diff_result = PlagiarismService.compare_two_documents(doc1.raw_text, doc2.raw_text)
+    diff_result = PlagiarismDetector.compare_two_documents(doc1.raw_text, doc2.raw_text)
     diff_result['doc1_title'] = doc1.filename
     diff_result['doc2_title'] = doc2.filename
 
@@ -287,7 +286,7 @@ def batch_compare():
             file.save(temp_path)
             try:
                 ext = fn.rsplit('.', 1)[1].lower()
-                extracted = ExtractorService.extract_text(temp_path, ext)
+                extracted = DocumentExtractor.extract_text(temp_path, ext)
                 doc_obj = Document(
                     filename=fn,
                     file_type=ext,
@@ -302,7 +301,7 @@ def batch_compare():
     if len(parsed_docs) < 2:
         return jsonify({'error': 'Could not extract valid text from at least 2 files.'}), 400
 
-    result = PlagiarismService.compare_multiple_documents(parsed_docs)
+    result = PlagiarismDetector.compare_multiple_documents(parsed_docs)
     return jsonify(result), 200
 
 @api_bp.route('/reference-documents', methods=['GET'])
