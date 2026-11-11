@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     togglePlag.addEventListener('change', () => {
       const marks = container.querySelectorAll('.plag-highlight');
       marks.forEach(m => {
-        m.style.backgroundColor = togglePlag.checked ? '#fecaca' : 'transparent';
-        m.style.borderBottom = togglePlag.checked ? '2px solid #dc2626' : 'none';
+        m.style.backgroundColor = togglePlag.checked ? '#fef08a' : 'transparent';
+        m.style.borderBottom = togglePlag.checked ? '2px solid #ca8a04' : 'none';
       });
     });
   }
@@ -67,8 +67,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Split text into paragraphs
-    const paragraphs = raw.split(/\n\s*\n/);
+    // Split text into paragraphs cleanly
+    let paragraphs = raw.split(/\n\s*\n/);
+    if (paragraphs.length <= 2 && raw.includes('\n')) {
+      // Split on lines starting with headers or numbering if double newlines are absent
+      const lines = raw.split(/\r?\n/);
+      paragraphs = [];
+      let cur = [];
+      lines.forEach(l => {
+        const tr = l.trim();
+        if (!tr) {
+          if (cur.length) { paragraphs.push(cur.join(' ')); cur = []; }
+        } else if (/^(Abstract|\d+\.\s+[A-Za-z]|References|ARTIFICIAL|Student Name|TEST NOTICE|Page \d)/.test(tr) || tr.startsWith('•')) {
+          if (cur.length) { paragraphs.push(cur.join(' ')); cur = []; }
+          paragraphs.push(tr);
+        } else {
+          cur.push(tr);
+        }
+      });
+      if (cur.length) paragraphs.push(cur.join(' '));
+    }
     let html = '';
 
     // Create lookup sets for fast matching
@@ -76,6 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
     d.matches.forEach(m => {
       if (m.queryText) {
         plagMap.set(m.queryText.trim().toLowerCase(), m);
+        // Also map sub-sentences so multi-sentence queries highlight smoothly
+        const subs = m.queryText.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [];
+        subs.forEach(sub => {
+          const sk = sub.trim().toLowerCase();
+          if (sk.length > 15) plagMap.set(sk, m);
+        });
       }
     });
 
@@ -83,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
     d.aiSentences.forEach(s => {
       if (s.sentenceText && s.isFlagged) {
         aiMap.set(s.sentenceText.trim().toLowerCase(), s);
+        const subs = s.sentenceText.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [];
+        subs.forEach(sub => {
+          const sk = sub.trim().toLowerCase();
+          if (sk.length > 15) aiMap.set(sk, s);
+        });
       }
     });
 

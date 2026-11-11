@@ -1,4 +1,6 @@
 import io
+import re
+import html
 from datetime import datetime, timezone
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -24,10 +26,10 @@ class ReportService:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
-            rightMargin=40,
-            leftMargin=40,
-            topMargin=40,
-            bottomMargin=40
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=32,
+            bottomMargin=32
         )
 
         styles = getSampleStyleSheet()
@@ -61,18 +63,18 @@ class ReportService:
             'Heading2',
             parent=styles['Normal'],
             fontName='Helvetica-Bold',
-            fontSize=14,
-            leading=18,
+            fontSize=13,
+            leading=16,
             textColor=PRIMARY_COLOR,
-            spaceBefore=14,
-            spaceAfter=8
+            spaceBefore=10,
+            spaceAfter=5
         )
         body_style = ParagraphStyle(
             'Body',
             parent=styles['Normal'],
             fontName='Helvetica',
-            fontSize=10,
-            leading=14,
+            fontSize=9,
+            leading=12.5,
             textColor=colors.HexColor('#334155')
         )
         body_bold = ParagraphStyle(
@@ -274,7 +276,7 @@ class ReportService:
                 for m in matches[:3]:
                     display_sim = round(min(MAX_ERROR_THRESHOLD, m.similarity_percentage if m.similarity_percentage > 0 else MAX_ERROR_THRESHOLD), 1)
                     txt = f"<b>Matched against:</b> {m.source_title} ({display_sim}% similarity)<br/><i>\"{m.query_text}\"</i>"
-                    elements.append(Paragraph(txt, ParagraphStyle('PlagItem', parent=body_style, backColor=colors.HexColor('#fee2e2'), borderPadding=4, spaceAfter=6)))
+                    elements.append(Paragraph(txt, ParagraphStyle('PlagItem', parent=body_style, backColor=colors.HexColor('#fef08a'), borderPadding=5, spaceAfter=6)))
 
             # AI Flagged Sentences
             if flagged_ai:
@@ -282,7 +284,95 @@ class ReportService:
                 for s in flagged_ai:
                     display_prob = round(min(MAX_ERROR_THRESHOLD, s.ai_probability * 100 if s.ai_probability > 0 else MAX_ERROR_THRESHOLD), 1)
                     txt = f"<b>Sentence #{s.sentence_index + 1}</b> (Estimated Probability: {display_prob}%, Burstiness: {s.burstiness_score})<br/><i>\"{s.sentence_text}\"</i>"
-                    elements.append(Paragraph(txt, ParagraphStyle('AIItem', parent=body_style, backColor=colors.HexColor('#fef3c7'), borderPadding=4, spaceAfter=6)))
+                    elements.append(Paragraph(txt, ParagraphStyle('AIItem', parent=body_style, backColor=colors.HexColor('#fef08a'), borderPadding=5, spaceAfter=6)))
+            elements.append(Spacer(1, 10))
+
+        # Complete Text of Document / Fake Report with Yellow Highlights
+        if document and document.raw_text:
+            elements.append(Paragraph("<b>Evaluated Document Content (Complete Text with Yellow Error Highlights)</b>", h2_style))
+            elements.append(Paragraph("<i>All submitted text from the document is reproduced below. Suspected duplicate/plagiarized and AI-flagged passages (≤ 8% margin) are highlighted in yellow.</i>", subtitle_style))
+            elements.append(Spacer(1, 8))
+
+            YELLOW_HIGHLIGHT = "#fef08a"
+
+            # Gather all error passages to highlight in yellow
+            error_phrases = []
+            if matches:
+                for m in matches:
+                    if m.query_text and m.query_text.strip():
+                        error_phrases.append(m.query_text.strip())
+            if ai_sentences:
+                for s in ai_sentences:
+                    if s.is_flagged and s.sentence_text and s.sentence_text.strip():
+                        error_phrases.append(s.sentence_text.strip())
+
+            # Structure full document into paragraphs
+            raw = document.raw_text.replace('\r\n', '\n')
+            lines = [l.strip() for l in raw.split('\n')]
+            doc_paras = []
+            cur_p = []
+            for line in lines:
+                if not line:
+                    if cur_p:
+                        doc_paras.append(" ".join(cur_p))
+                        cur_p = []
+                elif re.match(r'^(Abstract|\d+\.\s+[A-Za-z]|References|ARTIFICIAL|Student Name|TEST NOTICE|Page \d)', line):
+                    if cur_p:
+                        doc_paras.append(" ".join(cur_p))
+                        cur_p = []
+                    doc_paras.append(line)
+                elif line.startswith('•'):
+                    if cur_p:
+                        doc_paras.append(" ".join(cur_p))
+                        cur_p = []
+                    doc_paras.append(line)
+                else:
+                    cur_p.append(line)
+            if cur_p:
+                doc_paras.append(" ".join(cur_p))
+
+            doc_h3_style = ParagraphStyle(
+                'DocH3',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=10,
+                leading=13,
+                textColor=PRIMARY_COLOR,
+                spaceBefore=5,
+                spaceAfter=2
+            )
+            bullet_style = ParagraphStyle(
+                'DocBullet',
+                parent=body_style,
+                leftIndent=15,
+                spaceAfter=1
+            )
+
+            for p in doc_paras:
+                is_heading = bool(re.match(r'^(Abstract|\d+\.\s+[A-Za-z]|References|ARTIFICIAL INTELLIGENCE IN EDUCATION)', p))
+                p_html = html.escape(p)
+
+                # Highlight error parts with yellow background
+                for err in error_phrases:
+                    escaped_err = html.escape(err)
+                    if escaped_err in p_html:
+                        replacement = f'<font backcolor="{YELLOW_HIGHLIGHT}"><b>{escaped_err}</b></font>'
+                        p_html = p_html.replace(escaped_err, replacement)
+                    else:
+                        # Also check sentence-level chunks for multi-sentence passages
+                        sub_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', err) if len(s.strip()) > 15]
+                        for sub in sub_sentences:
+                            escaped_sub = html.escape(sub)
+                            if escaped_sub in p_html and f'<font backcolor="{YELLOW_HIGHLIGHT}"><b>{escaped_sub}</b></font>' not in p_html:
+                                p_html = p_html.replace(escaped_sub, f'<font backcolor="{YELLOW_HIGHLIGHT}"><b>{escaped_sub}</b></font>')
+
+                if is_heading:
+                    elements.append(Paragraph(f"<b>{p_html}</b>", doc_h3_style))
+                elif p.startswith('•'):
+                    elements.append(Paragraph(p_html, bullet_style))
+                else:
+                    elements.append(Paragraph(p_html, body_style))
+                    elements.append(Spacer(1, 2))
 
         # Build PDF
         doc.build(elements)

@@ -16,11 +16,11 @@ mark.ai-highlight:hover {
   background-color: #fde047 !important;
 }
 
-/* Red / Coral Highlighting for Plagiarism Overlap */
+/* Yellow Highlighting for Plagiarism / Duplicate Overlap */
 mark.plag-highlight {
-  background-color: #fecaca !important; /* Soft Red */
+  background-color: #fef08a !important; /* Pastel Yellow */
   color: #1e293b;
-  border-bottom: 2px solid #dc2626;
+  border-bottom: 2px solid #ca8a04;
   padding: 2px 4px;
   border-radius: 3px;
   cursor: pointer;
@@ -29,14 +29,14 @@ mark.plag-highlight {
 }
 
 mark.plag-highlight:hover {
-  background-color: #fca5a5 !important;
+  background-color: #fde047 !important;
 }
 
-/* Orange Overlap (both AI and Plagiarism flagged on same text) */
+/* Yellow Overlap (both AI and Duplicate/Plagiarism flagged on same text) */
 mark.both-highlight {
-  background-color: #fed7aa !important; /* Warm Peach / Orange */
+  background-color: #fde047 !important; /* Vibrant Yellow */
   color: #1e293b;
-  border-bottom: 2px solid #ea580c;
+  border-bottom: 2px solid #b45309;
   padding: 2px 4px;
   border-radius: 3px;
   cursor: pointer;
