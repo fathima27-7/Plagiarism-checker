@@ -120,3 +120,4 @@ class QualitySuggester:
             })
 
         return suggestions
+

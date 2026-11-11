@@ -1,0 +1,30 @@
+{# 
+  PlagiScan AI – Reusable Card Component (Neo-Brutalism)
+  Usage as Macro:
+    {% import 'components/card.html' as cards %}
+    {{ cards.render(title="My Card", color="yellow", body="Content...") }}
+#}
+
+{% macro render(title="", color="surface", badge="", footer="", hover=true) %}
+<div class="nb-card {% if color == 'yellow' %}nb-card-yellow{% elif color == 'blue' %}nb-card-blue{% elif color == 'lavender' %}nb-card-lavender{% endif %} {% if hover %}nb-card-hover{% endif %}">
+  {% if title or badge %}
+  <div class="nb-card-header">
+    <h4 class="nb-card-title">{{ title }}</h4>
+    {% if badge %}
+    <span class="nb-badge nb-badge-white">{{ badge }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="nb-card-body">
+    {{ caller() if caller else '' }}
+  </div>
+
+  {% if footer %}
+  <div class="nb-card-footer">
+    {{ footer }}
+  </div>
+  {% endif %}
+</div>
+{% endmacro %}
+

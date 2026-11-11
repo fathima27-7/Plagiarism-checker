@@ -1,0 +1,74 @@
+{# 
+  PlagiScan AI – Sidebar Component (Neo-Brutalism)
+  Usage:
+    {% include 'components/sidebar.html' %}
+#}
+<aside class="nb-sidebar">
+  <div>
+    <!-- Sidebar Header -->
+    <div class="nb-sidebar-header">
+      <div class="nb-sidebar-title">Academic Workbench</div>
+    </div>
+
+    <!-- Navigation List -->
+    <ul class="nb-sidebar-nav">
+      <li class="nb-sidebar-item">
+        <a href="/" class="nb-sidebar-link {% if request.path == '/' %}active{% endif %}">
+          <div class="nb-sidebar-link-content">
+            <span>🚀</span>
+            <span>Upload & Analyze</span>
+          </div>
+          <span class="nb-badge nb-badge-yellow nb-badge-pill">Scan</span>
+        </a>
+      </li>
+
+      <li class="nb-sidebar-item">
+        <a href="/compare" class="nb-sidebar-link {% if request.path == '/compare' %}active{% endif %}">
+          <div class="nb-sidebar-link-content">
+            <span>⚖️</span>
+            <span>Side-by-Side Diff</span>
+          </div>
+          <span class="nb-badge nb-badge-blue nb-badge-pill">2-Way</span>
+        </a>
+      </li>
+
+      <li class="nb-sidebar-item">
+        <a href="/batch" class="nb-sidebar-link {% if request.path == '/batch' %}active{% endif %}">
+          <div class="nb-sidebar-link-content">
+            <span>▦</span>
+            <span>Multi-Doc Matrix</span>
+          </div>
+          <span class="nb-badge nb-badge-lavender nb-badge-pill">N×N</span>
+        </a>
+      </li>
+
+      <li class="nb-sidebar-item">
+        <a href="/history" class="nb-sidebar-link {% if request.path == '/history' %}active{% endif %}">
+          <div class="nb-sidebar-link-content">
+            <span>🕒</span>
+            <span>Analysis Archive</span>
+          </div>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Quick Reference Corpus Status -->
+    <div class="mt-4 p-3 bg-white border border-2 border-dark" style="box-shadow: 3px 3px 0px #000; border-radius: 6px;">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="fw-bold" style="font-size: 0.8rem; text-transform: uppercase;">Corpus Status</span>
+        <span class="nb-badge nb-badge-mint" style="font-size: 0.65rem;">Active</span>
+      </div>
+      <div class="small fw-semibold text-muted">
+        Indexed peer & benchmark research papers ready for TF-IDF cross-referencing.
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar Footer -->
+  <div class="nb-sidebar-footer">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="small fw-bold">v2.0 Neo-Edition</div>
+      <span class="nb-badge nb-badge-white" style="font-size: 0.65rem;">CSE 2026</span>
+    </div>
+  </div>
+</aside>

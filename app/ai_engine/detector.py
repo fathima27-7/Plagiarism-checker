@@ -156,3 +156,4 @@ class AIDetector:
             'flagged_sentences_count': flagged_count,
             'sentence_analyses': sentence_analyses
         }
+

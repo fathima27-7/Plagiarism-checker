@@ -163,3 +163,4 @@ class CitationChecker:
             entries.append(" ".join(current_entry))
 
         return body_text, bib_text, entries
+

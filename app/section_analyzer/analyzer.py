@@ -118,3 +118,4 @@ class SectionAnalyzer:
             {'section_name': 'Main Body / Core Discussion', 'lines': paras[c1:c2], 'start_char': len("\n\n".join(paras[:c1])), 'end_char': len("\n\n".join(paras[:c2]))},
             {'section_name': 'Findings / Closing', 'lines': paras[c2:], 'start_char': len("\n\n".join(paras[:c2])), 'end_char': len(text)}
         ]
+

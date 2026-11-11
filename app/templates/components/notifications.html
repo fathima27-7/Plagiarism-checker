@@ -1,0 +1,29 @@
+{# 
+  PlagiScan AI – Notification & Alert Components (Neo-Brutalism)
+  Usage as Macro:
+    {% import 'components/notifications.html' as notify %}
+    {{ notify.alert(text="Document contains 3 uncited references.", type="yellow", title="Notice") }}
+#}
+
+{% macro alert(title="", text="", type="yellow", dismissible=true) %}
+<div class="nb-alert nb-alert-{{ type }}" role="alert">
+  <div class="d-flex align-items-center gap-2">
+    <span class="fs-5">
+      {% if type == 'yellow' %}⚠️{% elif type == 'blue' %}ℹ️{% elif type == 'lavender' %}💡{% elif type == 'coral' %}🚨{% else %}✅{% endif %}
+    </span>
+    <div>
+      {% if title %}<strong class="me-1">{{ title }}:</strong>{% endif %}
+      <span>{{ text }}</span>
+    </div>
+  </div>
+  {% if dismissible %}
+  <button type="button" class="nb-btn nb-btn-neutral nb-btn-sm py-0 px-2" data-nb-dismiss="alert" aria-label="Close">
+    ✕
+  </button>
+  {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Global Toast Container Anchor -->
+<div class="nb-toast-container" id="neoToastContainer"></div>
+

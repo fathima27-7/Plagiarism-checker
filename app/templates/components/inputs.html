@@ -1,0 +1,57 @@
+{# 
+  PlagiScan AI – Input Fields Component (Neo-Brutalism)
+  Usage as Macro:
+    {% import 'components/inputs.html' as form %}
+    {{ form.text_input(label="Paper Title", id="title", placeholder="Enter paper title...") }}
+    {{ form.file_dropzone(id="file_drop", label="Upload Document") }}
+#}
+
+{% macro text_input(label="", id="", placeholder="", value="", type="text", hint="") %}
+<div class="nb-form-group">
+  {% if label %}
+  <label for="{{ id }}" class="nb-label">{{ label }}</label>
+  {% endif %}
+  <input type="{{ type }}" id="{{ id }}" name="{{ id }}" class="nb-input" placeholder="{{ placeholder }}" value="{{ value }}">
+  {% if hint %}
+  <small class="fw-semibold text-muted d-block mt-1">{{ hint }}</small>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro textarea(label="", id="", placeholder="", rows=5, hint="") %}
+<div class="nb-form-group">
+  {% if label %}
+  <label for="{{ id }}" class="nb-label">{{ label }}</label>
+  {% endif %}
+  <textarea id="{{ id }}" name="{{ id }}" rows="{{ rows }}" class="nb-textarea" placeholder="{{ placeholder }}"></textarea>
+  {% if hint %}
+  <small class="fw-semibold text-muted d-block mt-1">{{ hint }}</small>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro select_field(label="", id="", options=[], selected="") %}
+<div class="nb-form-group">
+  {% if label %}
+  <label for="{{ id }}" class="nb-label">{{ label }}</label>
+  {% endif %}
+  <select id="{{ id }}" name="{{ id }}" class="nb-select">
+    {% for val, text in options %}
+    <option value="{{ val }}" {% if val == selected %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+</div>
+{% endmacro %}
+
+{% macro file_dropzone(id="fileInput", label="Drop files here", hint="Supports .PDF, .DOCX, .TXT up to 16 MB") %}
+<div class="nb-file-dropzone" id="dropzone_{{ id }}">
+  <div class="fs-1 mb-2">📁</div>
+  <div class="fw-bold fs-5 mb-1">{{ label }}</div>
+  <p class="small text-muted mb-3">{{ hint }}</p>
+  <button type="button" class="nb-btn nb-btn-secondary nb-btn-sm" onclick="document.getElementById('{{ id }}').click()">
+    Browse Files
+  </button>
+  <input type="file" id="{{ id }}" name="{{ id }}" class="d-none" accept=".pdf,.docx,.doc,.txt">
+</div>
+{% endmacro %}
+

@@ -75,3 +75,4 @@ def count_syllables(word):
     word = re.sub(r'^y', '', word)
     matches = re.findall(r'[aeiouy]{1,2}', word)
     return max(1, len(matches))
+

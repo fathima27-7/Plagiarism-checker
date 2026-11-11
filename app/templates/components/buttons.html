@@ -1,0 +1,27 @@
+{# 
+  PlagiScan AI – Button Components (Neo-Brutalism)
+  Usage as Macro:
+    {% import 'components/buttons.html' as btn %}
+    {{ btn.button(text="Analyze Now", type="primary", icon="⚡") }}
+    {{ btn.link(text="Compare Documents", url="/compare", type="secondary") }}
+#}
+
+{% macro button(text="Submit", type="primary", size="", icon="", id="", extra_classes="", onclick="") %}
+<button type="button" 
+  class="nb-btn nb-btn-{{ type }} {% if size %}nb-btn-{{ size }}{% endif %} {{ extra_classes }}"
+  {% if id %}id="{{ id }}"{% endif %}
+  {% if onclick %}onclick="{{ onclick }}"{% endif %}>
+  {% if icon %}<span class="me-1">{{ icon }}</span>{% endif %}
+  <span>{{ text }}</span>
+</button>
+{% endmacro %}
+
+{% macro link(text="Action", url="#", type="primary", size="", icon="", id="", extra_classes="") %}
+<a href="{{ url }}" 
+  class="nb-btn nb-btn-{{ type }} {% if size %}nb-btn-{{ size }}{% endif %} {{ extra_classes }}"
+  {% if id %}id="{{ id }}"{% endif %}>
+  {% if icon %}<span class="me-1">{{ icon }}</span>{% endif %}
+  <span>{{ text }}</span>
+</a>
+{% endmacro %}
+

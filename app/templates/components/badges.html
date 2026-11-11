@@ -1,0 +1,42 @@
+{# 
+  PlagiScan AI – Status Badges Component (Neo-Brutalism)
+  Usage as Macro:
+    {% import 'components/badges.html' as badge %}
+    {{ badge.badge(text="Low AI Risk", color="mint", pill=true) }}
+    {{ badge.ai_risk(level="High") }}
+#}
+
+{% macro badge(text="", color="yellow", icon="", pill=false, extra_classes="") %}
+<span class="nb-badge nb-badge-{{ color }} {% if pill %}nb-badge-pill{% endif %} {{ extra_classes }}">
+  {% if icon %}<span class="me-1">{{ icon }}</span>{% endif %}
+  <span>{{ text }}</span>
+</span>
+{% endmacro %}
+
+{% macro ai_risk(level="Low") %}
+{% if level == 'High' %}
+<span class="nb-badge nb-badge-coral nb-badge-pill">
+  <span class="me-1">🚨</span> High AI Risk
+</span>
+{% elif level == 'Moderate' %}
+<span class="nb-badge nb-badge-yellow nb-badge-pill">
+  <span class="me-1">⚠️</span> Moderate AI Risk
+</span>
+{% else %}
+<span class="nb-badge nb-badge-mint nb-badge-pill">
+  <span class="me-1">✓</span> Low AI Risk
+</span>
+{% endif %}
+{% endmacro %}
+
+{% macro file_type(ext="pdf") %}
+{% set ext_clean = ext.lower().replace('.', '') %}
+{% if ext_clean == 'pdf' %}
+<span class="nb-badge nb-badge-coral font-monospace">.PDF</span>
+{% elif ext_clean in ['docx', 'doc'] %}
+<span class="nb-badge nb-badge-blue font-monospace">.DOCX</span>
+{% else %}
+<span class="nb-badge nb-badge-lavender font-monospace">.TXT</span>
+{% endif %}
+{% endmacro %}
+

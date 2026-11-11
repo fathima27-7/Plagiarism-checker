@@ -31,3 +31,4 @@ class MLModelRegistry:
             cls._models[model_name] = joblib.load(path)
             return cls._models[model_name]
         return None
+

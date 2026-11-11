@@ -103,3 +103,4 @@ class DocumentExtractor:
 
         full_clean = "\n\n".join(clean_paras)
         return full_clean, clean_paras
+

@@ -62,3 +62,4 @@ class QualityAnalyzer:
             'passive_voice_percentage': passive_pct,
             'long_sentences_count': long_sentences
         }
+

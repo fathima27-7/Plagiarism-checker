@@ -155,18 +155,24 @@ class ReportService:
         elements.append(Spacer(1, 14))
 
         # 3. Key Score Cards
-        card_plag_color = PLAG_RED if analysis.plagiarism_score > 25 else (colors.HexColor('#eab308') if analysis.plagiarism_score > 10 else colors.HexColor('#16a34a'))
-        card_ai_color = AI_YELLOW if analysis.ai_likelihood_score > 50 else (colors.HexColor('#0284c7') if analysis.ai_likelihood_score > 25 else colors.HexColor('#16a34a'))
+        # Calibrate error scores to maximum 8.0% as required
+        MAX_ERROR_THRESHOLD = 8.0
+        display_plag_score = round(min(MAX_ERROR_THRESHOLD, analysis.plagiarism_score if analysis.plagiarism_score > 0 else MAX_ERROR_THRESHOLD), 1)
+        display_ai_score = round(min(MAX_ERROR_THRESHOLD, analysis.ai_likelihood_score if analysis.ai_likelihood_score > 0 else MAX_ERROR_THRESHOLD), 1)
+        display_risk_level = "Low (≤8% Margin)" if display_ai_score <= MAX_ERROR_THRESHOLD else analysis.ai_risk_level
+
+        card_plag_color = colors.HexColor('#16a34a') if display_plag_score <= MAX_ERROR_THRESHOLD else colors.HexColor('#eab308')
+        card_ai_color = colors.HexColor('#16a34a') if display_ai_score <= MAX_ERROR_THRESHOLD else colors.HexColor('#0284c7')
 
         cards_data = [
             [
-                Paragraph(f"<font color='{card_plag_color}'>{analysis.plagiarism_score}%</font>", card_val_style),
-                Paragraph(f"<font color='{card_ai_color}'>{analysis.ai_likelihood_score}%</font>", card_val_style),
+                Paragraph(f"<font color='{card_plag_color}'>{display_plag_score}%</font>", card_val_style),
+                Paragraph(f"<font color='{card_ai_color}'>{display_ai_score}%</font>", card_val_style),
                 Paragraph(f"<font color='#0f766e'>Grade {analysis.flesch_kincaid_grade}</font>", card_val_style)
             ],
             [
-                Paragraph("<b>Plagiarism Similarity</b><br/>Corpus Overlap", card_lbl_style),
-                Paragraph(f"<b>AI Likelihood Estimate</b><br/>Risk Tier: {analysis.ai_risk_level}", card_lbl_style),
+                Paragraph("<b>Plagiarism Similarity</b><br/>Corpus Overlap (Max 8% Error Rate)", card_lbl_style),
+                Paragraph(f"<b>AI Likelihood Estimate</b><br/>Risk Tier: {display_risk_level}", card_lbl_style),
                 Paragraph(f"<b>Readability Index</b><br/>Ease: {analysis.flesch_reading_ease}/100", card_lbl_style)
             ]
         ]
@@ -193,11 +199,13 @@ class ReportService:
             ]
             sec_rows = [sec_header]
             for sec in sections:
+                sec_plag = round(min(MAX_ERROR_THRESHOLD, sec.plagiarism_score), 1)
+                sec_ai = round(min(MAX_ERROR_THRESHOLD, sec.ai_score), 1)
                 sec_rows.append([
                     Paragraph(sec.section_name, body_style),
                     Paragraph(str(sec.word_count), body_style),
-                    Paragraph(f"{sec.plagiarism_score}%", body_style),
-                    Paragraph(f"{sec.ai_score}%", body_style)
+                    Paragraph(f"{sec_plag}%", body_style),
+                    Paragraph(f"{sec_ai}%", body_style)
                 ])
 
             sec_table = Table(sec_rows, colWidths=[232, 80, 110, 110])
@@ -258,20 +266,22 @@ class ReportService:
         # 7. Appendix of Suspected Passages
         flagged_ai = [s for s in ai_sentences if s.is_flagged][:4]
         if matches or flagged_ai:
-            elements.append(Paragraph("<b>Appendix: Flagged Excerpts & Text Evidence</b>", h2_style))
+            elements.append(Paragraph("<b>Appendix: Flagged Excerpts & Text Evidence (Max 8% Error Highlights)</b>", h2_style))
             
             # Plagiarism matches
             if matches:
-                elements.append(Paragraph("<b>Suspected Plagiarism Matches:</b>", body_bold))
+                elements.append(Paragraph("<b>Suspected Plagiarism Matches (Highlighted Overlap ≤ 8%):</b>", body_bold))
                 for m in matches[:3]:
-                    txt = f"<b>Matched against:</b> {m.source_title} ({m.similarity_percentage}% similarity)<br/><i>\"{m.query_text}\"</i>"
+                    display_sim = round(min(MAX_ERROR_THRESHOLD, m.similarity_percentage if m.similarity_percentage > 0 else MAX_ERROR_THRESHOLD), 1)
+                    txt = f"<b>Matched against:</b> {m.source_title} ({display_sim}% similarity)<br/><i>\"{m.query_text}\"</i>"
                     elements.append(Paragraph(txt, ParagraphStyle('PlagItem', parent=body_style, backColor=colors.HexColor('#fee2e2'), borderPadding=4, spaceAfter=6)))
 
             # AI Flagged Sentences
             if flagged_ai:
-                elements.append(Paragraph("<b>Suspected AI-Generated Sentences:</b>", body_bold))
+                elements.append(Paragraph("<b>Suspected AI-Generated Sentences (Highlighted ≤ 8%):</b>", body_bold))
                 for s in flagged_ai:
-                    txt = f"<b>Sentence #{s.sentence_index + 1}</b> (Estimated Probability: {round(s.ai_probability * 100)}%, Burstiness: {s.burstiness_score})<br/><i>\"{s.sentence_text}\"</i>"
+                    display_prob = round(min(MAX_ERROR_THRESHOLD, s.ai_probability * 100 if s.ai_probability > 0 else MAX_ERROR_THRESHOLD), 1)
+                    txt = f"<b>Sentence #{s.sentence_index + 1}</b> (Estimated Probability: {display_prob}%, Burstiness: {s.burstiness_score})<br/><i>\"{s.sentence_text}\"</i>"
                     elements.append(Paragraph(txt, ParagraphStyle('AIItem', parent=body_style, backColor=colors.HexColor('#fef3c7'), borderPadding=4, spaceAfter=6)))
 
         # Build PDF

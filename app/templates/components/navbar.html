@@ -1,0 +1,49 @@
+{# 
+  PlagiScan AI – Navbar Component (Neo-Brutalism)
+  Usage:
+    {% include 'components/navbar.html' %}
+#}
+<header class="nb-navbar">
+  <div class="nb-nav-container">
+    <!-- Brand Logo -->
+    <div class="d-flex align-items-center gap-3">
+      <button class="nb-hamburger-btn" data-nb-toggle="sidebar" aria-label="Toggle navigation drawer" aria-expanded="false">
+        <span>☰</span>
+      </button>
+      {% include 'components/logo.html' %}
+    </div>
+
+    <!-- Navigation Links -->
+    <nav>
+      <ul class="nb-nav-links">
+        <li>
+          <a href="/" class="nb-nav-link {% if request.path == '/' %}active{% endif %}">
+            <span class="me-1">📄</span> Scan Document
+          </a>
+        </li>
+        <li>
+          <a href="/compare" class="nb-nav-link {% if request.path == '/compare' %}active{% endif %}">
+            <span class="me-1">⚖️</span> Side-by-Side Compare
+          </a>
+        </li>
+        <li>
+          <a href="/batch" class="nb-nav-link {% if request.path == '/batch' %}active{% endif %}">
+            <span class="me-1">▦</span> Batch Matrix
+          </a>
+        </li>
+        <li>
+          <a href="/history" class="nb-nav-link {% if request.path == '/history' %}active{% endif %}">
+            <span class="me-1">🕒</span> History
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Right Header Actions -->
+    <div class="nb-nav-actions">
+      <a href="/#upload-section" class="nb-btn nb-btn-primary nb-btn-sm">
+        <span class="me-1">⚡</span> New Analysis
+      </a>
+    </div>
+  </div>
+</header>
