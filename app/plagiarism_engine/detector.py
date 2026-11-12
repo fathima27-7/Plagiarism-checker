@@ -1,33 +1,85 @@
-from app.utils.vectorizer import TfidfVectorizer, cosine_similarity
 import numpy as np
-from app.utils.nlp_utils import split_sentences
+from app.utils.vectorizer import TfidfVectorizer, cosine_similarity
+from app.utils.nlp_utils import split_sentences, count_words
 
 class PlagiarismDetector:
     @staticmethod
     def analyze_document(query_doc, reference_docs, similarity_threshold=0.55):
         """
-        Analyzes query document against all available reference documents.
+        Analyzes query document against available reference corpus and peer documents,
+        and detects internal within-document duplicate content.
+        
         Returns:
             dict: {
-                'overall_score': float, # 0 to 100
-                'matches': list[dict],  # Sentence-level matches
-                'top_sources': list[dict]
+                'overall_score': float,          # 0.0 to 100.0 (unclamped)
+                'matches': list[dict],           # Matched passages with offsets and sources
+                'top_sources': list[dict],       # Sources with match counts
+                'matching_sources_count': int,   # Number of unique matching sources
+                'corpus_size': int,              # Number of documents evaluated against
+                'corpus_scope_note': str         # Clear explanation of corpus scope
             }
         """
-        query_sentences = split_sentences(query_doc.raw_text)
-        if not query_sentences or not reference_docs:
-            return {'overall_score': 0.0, 'matches': [], 'top_sources': []}
+        raw_text = query_doc.raw_text or ""
+        total_words = count_words(raw_text)
 
+        if not raw_text.strip() or total_words < 5:
+            return {
+                'overall_score': 0.0,
+                'matches': [],
+                'top_sources': [],
+                'matching_sources_count': 0,
+                'corpus_size': len(reference_docs) if reference_docs else 0,
+                'corpus_scope_note': "Document contains insufficient text for plagiarism evaluation."
+            }
+
+        query_sentences = split_sentences(raw_text)
+        if not query_sentences:
+            return {
+                'overall_score': 0.0,
+                'matches': [],
+                'top_sources': [],
+                'matching_sources_count': 0,
+                'corpus_size': len(reference_docs) if reference_docs else 0,
+                'corpus_scope_note': "No valid sentences isolated."
+            }
+
+        # Filter out very short fragments (< 4 words) from matching
+        valid_query_sentences = [
+            (idx, s.strip()) for idx, s in enumerate(query_sentences)
+            if count_words(s) >= 4
+        ]
+
+        if not valid_query_sentences:
+            return {
+                'overall_score': 0.0,
+                'matches': [],
+                'top_sources': [],
+                'matching_sources_count': 0,
+                'corpus_size': len(reference_docs) if reference_docs else 0,
+                'corpus_scope_note': "Document contains only very short phrases below matching threshold."
+            }
+
+        # Prepare reference corpus sentences (avoiding self-comparison and duplicate reference matches)
         ref_data = []
         all_ref_sentences = []
+        eligible_refs = []
+        seen_ref_keys = set()
 
-        for ref in reference_docs:
+        for ref in (reference_docs or []):
             if ref.id == query_doc.id:
                 continue
-            ref_sentences = split_sentences(ref.raw_text)
-            for s in ref_sentences:
+            # Deduplicate reference documents by filename or hash to avoid redundant comparisons
+            ref_key = (ref.filename, getattr(ref, 'file_hash', None)) if getattr(ref, 'file_hash', None) else ref.filename
+            if ref_key in seen_ref_keys:
+                continue
+            seen_ref_keys.add(ref_key)
+            eligible_refs.append(ref)
+
+        for ref in eligible_refs:
+            ref_sents = split_sentences(ref.raw_text or "")
+            for s in ref_sents:
                 clean_s = s.strip()
-                if len(clean_s.split()) >= 4:
+                if count_words(clean_s) >= 4:
                     all_ref_sentences.append(clean_s)
                     ref_data.append({
                         'doc_id': ref.id,
@@ -35,92 +87,129 @@ class PlagiarismDetector:
                         'sentence': clean_s
                     })
 
-        if not all_ref_sentences:
-            return {'overall_score': 0.0, 'matches': [], 'top_sources': []}
-
-        all_doc_texts = [query_doc.raw_text] + [ref.raw_text for ref in reference_docs if ref.id != query_doc.id]
-        doc_vectorizer = TfidfVectorizer(ngram_range=(1, 2), stop_words='english', min_df=1)
-        doc_tfidf = doc_vectorizer.fit_transform(all_doc_texts)
-        global_similarities = cosine_similarity(doc_tfidf[0:1], doc_tfidf[1:]).flatten()
-
-        valid_query_sentences = [(idx, s) for idx, s in enumerate(query_sentences) if len(s.split()) >= 4]
-        if not valid_query_sentences:
-            return {'overall_score': 0.0, 'matches': [], 'top_sources': []}
-
-        sent_vectorizer = TfidfVectorizer(ngram_range=(1, 2), stop_words='english')
-        all_sents = [s for _, s in valid_query_sentences] + all_ref_sentences
-        sent_tfidf = sent_vectorizer.fit_transform(all_sents)
-
-        num_queries = len(valid_query_sentences)
-        query_tfidf = sent_tfidf[:num_queries]
-        ref_tfidf = sent_tfidf[num_queries:]
-
-        sim_matrix = cosine_similarity(query_tfidf, ref_tfidf)
-
         matches = []
-        plagiarized_word_count = 0
+        matched_sentence_indices = set()
+        matched_word_count = 0
         source_counts = {}
 
-        current_search_pos = 0
-        full_text = query_doc.raw_text
+        # 1. External Corpus Matching (TF-IDF & Cosine Similarity)
+        if all_ref_sentences:
+            try:
+                vectorizer = TfidfVectorizer(ngram_range=(1, 2), stop_words='english', min_df=1)
+                all_corpus_sents = [s for _, s in valid_query_sentences] + all_ref_sentences
+                sent_tfidf = vectorizer.fit_transform(all_corpus_sents)
 
-        for q_i, (orig_idx, q_sent) in enumerate(valid_query_sentences):
-            best_ref_idx = int(np.argmax(sim_matrix[q_i]))
-            best_sim = float(sim_matrix[q_i, best_ref_idx])
+                num_queries = len(valid_query_sentences)
+                query_tfidf = sent_tfidf[:num_queries]
+                ref_tfidf = sent_tfidf[num_queries:]
 
-            if best_sim >= similarity_threshold:
-                ref_match = ref_data[best_ref_idx]
-                
-                found_pos = full_text.find(q_sent, current_search_pos)
-                if found_pos == -1:
-                    found_pos = full_text.find(q_sent)
-                
-                start_char = found_pos if found_pos != -1 else 0
-                end_char = start_char + len(q_sent)
-                if found_pos != -1:
-                    current_search_pos = end_char
+                sim_matrix = cosine_similarity(query_tfidf, ref_tfidf)
 
-                words_in_sent = len(q_sent.split())
-                plagiarized_word_count += words_in_sent
+                current_search_pos = 0
 
-                src_title = ref_match['title']
-                source_counts[src_title] = source_counts.get(src_title, 0) + 1
+                for q_i, (orig_idx, q_sent) in enumerate(valid_query_sentences):
+                    best_ref_idx = int(np.argmax(sim_matrix[q_i]))
+                    best_sim = float(sim_matrix[q_i, best_ref_idx])
 
-                matches.append({
-                    'sentence_index': orig_idx,
-                    'query_text': q_sent,
-                    'matched_text': ref_match['sentence'],
-                    'similarity_percentage': round(best_sim * 100, 1),
-                    'source_document_id': ref_match['doc_id'],
-                    'source_title': src_title,
-                    'start_char': start_char,
-                    'end_char': end_char
-                })
+                    if best_sim >= similarity_threshold:
+                        ref_match = ref_data[best_ref_idx]
+                        matched_sentence_indices.add(orig_idx)
 
-        total_words = max(1, query_doc.word_count)
-        max_global_sim = float(np.max(global_similarities)) * 100 if len(global_similarities) > 0 else 0.0
-        word_ratio_score = min(100.0, (plagiarized_word_count / total_words) * 100)
-        
-        overall_score = round(0.70 * word_ratio_score + 0.30 * min(word_ratio_score, max_global_sim), 1)
-        if matches and overall_score < 5.0:
-            overall_score = round(word_ratio_score, 1)
+                        found_pos = raw_text.find(q_sent, current_search_pos)
+                        if found_pos == -1:
+                            found_pos = raw_text.find(q_sent)
+                        start_char = found_pos if found_pos != -1 else 0
+                        end_char = start_char + len(q_sent)
+                        if found_pos != -1:
+                            current_search_pos = end_char
+
+                        words_in_sent = count_words(q_sent)
+                        matched_word_count += words_in_sent
+
+                        src_title = ref_match['title']
+                        source_counts[src_title] = source_counts.get(src_title, 0) + 1
+
+                        matches.append({
+                            'sentence_index': orig_idx,
+                            'query_text': q_sent,
+                            'matched_text': ref_match['sentence'],
+                            'similarity_percentage': round(best_sim * 100, 1),
+                            'source_document_id': ref_match['doc_id'],
+                            'source_title': src_title,
+                            'start_char': start_char,
+                            'end_char': end_char,
+                            'match_type': 'External Corpus Match'
+                        })
+            except Exception:
+                pass
+
+        # 2. Within-Document Duplicate / Repetition Detection
+        # Detects duplicated paragraphs/passages repeated within the same document
+        if len(valid_query_sentences) >= 2:
+            seen_sentences = {}
+            for q_i, (orig_idx, q_sent) in enumerate(valid_query_sentences):
+                norm_q = " ".join(q_sent.lower().split())
+                if len(norm_q) < 25:
+                    continue
+
+                if norm_q in seen_sentences and orig_idx not in matched_sentence_indices:
+                    # Found internal duplicate
+                    first_idx, first_text = seen_sentences[norm_q]
+                    matched_sentence_indices.add(orig_idx)
+
+                    found_pos = raw_text.find(q_sent)
+                    start_char = found_pos if found_pos != -1 else 0
+                    end_char = start_char + len(q_sent)
+
+                    words_in_sent = count_words(q_sent)
+                    matched_word_count += words_in_sent
+
+                    dup_source = "Internal Duplicate (Within-Document Repetition)"
+                    source_counts[dup_source] = source_counts.get(dup_source, 0) + 1
+
+                    matches.append({
+                        'sentence_index': orig_idx,
+                        'query_text': q_sent,
+                        'matched_text': first_text,
+                        'similarity_percentage': 100.0,
+                        'source_document_id': query_doc.id,
+                        'source_title': dup_source,
+                        'start_char': start_char,
+                        'end_char': end_char,
+                        'match_type': 'Internal Duplicate'
+                    })
+                elif norm_q not in seen_sentences:
+                    seen_sentences[norm_q] = (orig_idx, q_sent)
+
+        # 3. Overall Similarity Calculation (Unclamped)
+        # Ratio of matched words to total words
+        overall_score = round(min(100.0, (matched_word_count / max(1, total_words)) * 100), 1)
 
         top_sources = [
             {'title': title, 'matches_count': count}
             for title, count in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)
         ]
 
+        corpus_count = len(eligible_refs)
+        if corpus_count == 0:
+            scope_note = "Evaluation limited to within-document repetition checks. No external reference documents were available in the local repository."
+        else:
+            scope_note = f"Evaluated against {corpus_count} reference and peer document(s) in the local corpus. External web indexing is not enabled; zero matches in the local corpus does not guarantee absence of external plagiarism."
+
         return {
-            'overall_score': min(100.0, overall_score),
+            'overall_score': overall_score,
             'matches': matches,
-            'top_sources': top_sources
+            'top_sources': top_sources,
+            'matching_sources_count': len(top_sources),
+            'corpus_size': corpus_count,
+            'corpus_scope_note': scope_note
         }
 
     @staticmethod
     def compare_two_documents(doc1_text, doc2_text):
         """Calculates side-by-side comparison between two documents."""
-        sents1 = split_sentences(doc1_text)
-        sents2 = split_sentences(doc2_text)
+        sents1 = split_sentences(doc1_text or "")
+        sents2 = split_sentences(doc2_text or "")
 
         if not sents1 or not sents2:
             return {'overall_similarity': 0.0, 'doc1_sentences': [], 'doc2_sentences': []}
@@ -192,4 +281,3 @@ class PlagiarismDetector:
             'matrix': formatted_matrix,
             'filenames': filenames
         }
-

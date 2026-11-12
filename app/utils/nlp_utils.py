@@ -23,6 +23,25 @@ STANDARD_STOPWORDS = {
     "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"
 }
 
+def tokenize_words(text):
+    """
+    Centralized word tokenization for consistent word counting across all modules.
+    Matches alphanumeric sequences including intra-word hyphens and apostrophes
+    (e.g., 'AI-based', 'student\'s', '2026').
+    """
+    if not text:
+        return []
+    return re.findall(r"[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*", text)
+
+def count_words(text):
+    """
+    Centralized word counting function.
+    Guarantees consistent word count across extractor, sections, readability, and reports.
+    """
+    if not text:
+        return 0
+    return len(tokenize_words(text))
+
 def split_sentences(text):
     """
     Robust sentence splitter that preserves sentence boundary punctuation
@@ -31,6 +50,7 @@ def split_sentences(text):
     if not text or not text.strip():
         return []
     
+    # Normalize excessive horizontal whitespace while preserving newlines
     normalized = re.sub(r'[ \t]+', ' ', text.strip())
     
     # Protect common academic abbreviations from false sentence breaks
@@ -75,4 +95,3 @@ def count_syllables(word):
     word = re.sub(r'^y', '', word)
     matches = re.findall(r'[aeiouy]{1,2}', word)
     return max(1, len(matches))
-

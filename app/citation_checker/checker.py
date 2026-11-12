@@ -6,21 +6,32 @@ class CitationChecker:
     APA_IN_PROSE = r'\b([A-Z][a-zA-Z]+(?:\s+et\s+al\.)?)\s+\(([12]\d{3}[a-z]?)\)'
 
     BIBLIOGRAPHY_HEADERS = [
-        r'^\s*references\s*$',
-        r'^\s*bibliography\s*$',
-        r'^\s*works\s+cited\s*$',
-        r'^\s*literature\s+cited\s*$'
+        r'^\s*(?:\d+\.?\s*)?(?:references|bibliography|works\s+cited|literature\s+cited)(?:\s*\(.*?\))?\s*:?\s*$'
     ]
 
     @staticmethod
     def audit_citations(text):
         """
         Audits in-text citations against the document's bibliography section.
+        Distinguishes automated format checking from factual existence.
         """
+        if not text:
+            return {
+                'total_citations': 0,
+                'citation_format': 'None Detected',
+                'citations': [],
+                'references_count': 0,
+                'missing_references_count': 0,
+                'uncited_references_count': 0,
+                'has_bibliography': False,
+                'verification_note': 'No document text available.'
+            }
+
         body_text, bib_text, bib_entries = CitationChecker._extract_bibliography(text)
 
         in_text_citations = []
 
+        # 1. IEEE numeric [1], [1, 2], [1-3]
         for m in re.finditer(CitationChecker.IEEE_NUMERIC_PATTERN, body_text):
             raw_match = m.group(0)
             inner_nums = re.findall(r'\d+', m.group(1))
@@ -34,6 +45,7 @@ class CitationChecker:
                     'position': m.start()
                 })
 
+        # 2. APA author-year in parentheses: (Smith, 2020)
         for m in re.finditer(CitationChecker.APA_AUTHOR_YEAR_PAREN, body_text):
             author_part = m.group(1).strip()
             year_part = m.group(2).strip()
@@ -47,6 +59,7 @@ class CitationChecker:
                 'position': m.start()
             })
 
+        # 3. APA author in prose: Smith (2020)
         for m in re.finditer(CitationChecker.APA_IN_PROSE, body_text):
             author_part = m.group(1).strip()
             year_part = m.group(2).strip()
@@ -84,7 +97,8 @@ class CitationChecker:
             elif c['type'] == 'IEEE Numeric':
                 target_num = c['key']
                 for b_idx, b_entry in enumerate(bib_entries):
-                    if re.match(rf'^\[?{target_num}\]?', b_entry.strip()):
+                    # Match [1] or 1. or 1 at start of entry
+                    if re.match(rf'^\[?{target_num}\]?[.\s]', b_entry.strip()) or re.match(rf'^{target_num}\b', b_entry.strip()):
                         is_matched = True
                         matched_bib_indices.add(b_idx)
                         break
@@ -108,7 +122,9 @@ class CitationChecker:
                 'position_index': c['position']
             })
 
-        uncited_references = len(bib_entries) - len(matched_bib_indices) if bib_entries else 0
+        uncited_references = max(0, len(bib_entries) - len(matched_bib_indices)) if bib_entries else 0
+
+        verification_note = "Automated cross-referencing verifies bibliographic correspondence between in-text markers and the references section. It does not verify external factual existence or DOI validity."
 
         return {
             'total_citations': len(in_text_citations),
@@ -116,8 +132,9 @@ class CitationChecker:
             'citations': audited_citations[:50],
             'references_count': len(bib_entries),
             'missing_references_count': missing_count,
-            'uncited_references_count': max(0, uncited_references),
-            'has_bibliography': len(bib_entries) > 0
+            'uncited_references_count': uncited_references,
+            'has_bibliography': len(bib_entries) > 0,
+            'verification_note': verification_note
         }
 
     @staticmethod
@@ -127,12 +144,13 @@ class CitationChecker:
 
         for i, line in enumerate(lines):
             clean_line = line.strip().lower()
-            for header_pat in CitationChecker.BIBLIOGRAPHY_HEADERS:
-                if re.match(header_pat, clean_line):
-                    bib_start_index = i
+            if 2 < len(clean_line) < 60:
+                for header_pat in CitationChecker.BIBLIOGRAPHY_HEADERS:
+                    if re.match(header_pat, clean_line):
+                        bib_start_index = i
+                        break
+                if bib_start_index != -1:
                     break
-            if bib_start_index != -1:
-                break
 
         if bib_start_index == -1:
             return text, "", []
@@ -147,20 +165,20 @@ class CitationChecker:
         for bline in bib_lines:
             s_line = bline.strip()
             if not s_line:
-                if current_entry:
-                    entries.append(" ".join(current_entry))
-                    current_entry = []
                 continue
 
-            if re.match(r'^\[\d+\]', s_line) or re.match(r'^\d+\.', s_line):
+            # Detect new citation entry (starts with [1], 1., or standalone number)
+            if re.match(r'^\[\d+\]', s_line) or re.match(r'^\d+\.', s_line) or re.match(r'^\d+$', s_line):
                 if current_entry:
                     entries.append(" ".join(current_entry))
                 current_entry = [s_line]
             else:
-                current_entry.append(s_line)
+                if current_entry:
+                    current_entry.append(s_line)
+                else:
+                    current_entry = [s_line]
 
         if current_entry:
             entries.append(" ".join(current_entry))
 
         return body_text, bib_text, entries
-

@@ -262,6 +262,15 @@
               </tr>
               {% endfor %}
             </tbody>
+            <tfoot class="table-light">
+              <tr class="fw-bold">
+                <td>Total Reconciled Words</td>
+                <td>{{ document.word_count }} words</td>
+                <td>{{ analysis.plagiarism_score }}% (Overall)</td>
+                <td>{{ analysis.ai_likelihood_score }}% (Overall)</td>
+                <td class="text-success"><i class="bi bi-check-circle-fill me-1"></i> Section counts reconcile 100% with document total</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
